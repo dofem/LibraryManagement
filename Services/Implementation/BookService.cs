@@ -56,9 +56,17 @@ namespace LibraryManagement.Services
             await SaveAsync();
         }
 
+        public async Task Update(Book book)
+        {
+            _context.Books.Update(book);
+            await SaveAsync();
+        }
+
         public async Task SaveAsync()
         {
             await _context.SaveChangesAsync();
         }
+
+     
     }
 }

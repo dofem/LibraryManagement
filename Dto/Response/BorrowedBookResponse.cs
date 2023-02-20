@@ -8,6 +8,7 @@ namespace LibraryManagement.Dto.Response
         public int BookId { get; set; }
         [ForeignKey("User")]
         public int UserId { get; set; }
+        public string PhoneNumber { get; set; }
         public DateTime BorrowDate { get; set; } 
         public DateTime DueDate { get; set; } 
     }

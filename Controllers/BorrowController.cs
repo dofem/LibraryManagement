@@ -1,6 +1,9 @@
 ﻿using AutoMapper;
+using LibraryManagement.Dto.Request;
 using LibraryManagement.Dto.Response;
+using LibraryManagement.ExceptionHandler;
 using LibraryManagement.Services;
+using LibraryManagement.Services.Implementation;
 using LibraryManagement.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -46,5 +49,27 @@ namespace LibraryManagement.Controllers
             }
             return Ok(_mapper.Map<BorrowedBookResponse>(borrowedbook));
         }
+
+
+        [HttpPost("BorrowBook")]
+        public IActionResult BorrowBook([FromBody] BorrowBook request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var borrow = _borrowService.CreateAsync(request);
+                return Ok(borrow);
+            }
+            catch (BookAlreadyBorrowedException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+           
+        }
+
     }
 }

@@ -12,10 +12,10 @@ namespace LibraryManagement.Controllers
     [ApiController]
     public class BookController : ControllerBase
     {
-        private IBorrowService _bookService;
+        private IBookService _bookService;
         private IMapper _mapper;
 
-        public BookController(IBorrowService bookService,IMapper mapper)
+        public BookController(IBookService bookService,IMapper mapper)
         {
             _bookService = bookService;
             _mapper = mapper;
