@@ -28,8 +28,12 @@ namespace LibraryManagement.Services.Implementation
                         var overdueBorrowedBooks = await borrowService.GetOverdueBorrowedBooks();
                         foreach (var borrow in overdueBorrowedBooks)
                         {
-                            var message = $"Reminder: The book you borrowed is overdue. Please return it as soon as possible to avoid a fine.";
-                            smsNotificationService.SendSms(borrow.PhoneNumber, message);
+                            var daysBeforeOverdue = (borrow.DueDate - DateTime.Now).Days;
+                            if (daysBeforeOverdue == 2)
+                            {
+                                var message = $"Reminder: The book you borrowed is overdue in 2 days time. Please return it on or before {borrow.DueDate} to avoid a fine.";
+                                smsNotificationService.SendSms(borrow.PhoneNumber, message);
+                            }
                         }
 
                         foreach (var borrow in overdueBorrowedBooks)
