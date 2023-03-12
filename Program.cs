@@ -65,7 +65,10 @@ internal class Program
             };
         });
 
-
+        builder.Services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = "localhost:6379";
+        });
 
         builder.Services.AddSingleton<ISmsNotificationService, TwilioNotificationService>();
         builder.Services.AddHostedService<SmsNotificationService>();

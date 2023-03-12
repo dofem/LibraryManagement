@@ -67,6 +67,20 @@ namespace LibraryManagement.Services
             await _context.SaveChangesAsync();
         }
 
-     
+
+        public async Task<List<Book>> GetAllBooksAvailableForBorrowAsync()
+        {
+            return await _context.Books.Where(b => b.IsAvailable == true).ToListAsync();
+        }
+
+        public async Task UpdateIsAvailableStatusAsync(int bookId)
+        {
+            var book = await _context.Books.FindAsync(bookId);
+            book.IsAvailable = true;
+            _context.Books.Update(book);
+            await SaveAsync();
+        }
+
+
     }
 }

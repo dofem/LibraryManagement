@@ -5,6 +5,8 @@ using LibraryManagement.Entities;
 using LibraryManagement.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json;
 
 namespace LibraryManagement.Controllers
 {
@@ -14,20 +16,77 @@ namespace LibraryManagement.Controllers
     {
         private IBookService _bookService;
         private IMapper _mapper;
+        private IDistributedCache _distributedCache;
+        private IConfiguration _configuration;
 
-        public BookController(IBookService bookService,IMapper mapper)
+        public BookController(IBookService bookService,IMapper mapper,IDistributedCache distributedCache,IConfiguration configuration)
         {
             _bookService = bookService;
             _mapper = mapper;
+            _distributedCache = distributedCache;
+            _configuration = configuration;
         }
 
         [HttpGet("RetrieveBookCollections")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<GetAllBooks>>> RetrieveAllBooks()
         {
+            var cacheKey = _configuration["CacheSettings:RetriveAllBookCacheKey"];
+            var cachedResult = await _distributedCache.GetStringAsync(cacheKey);
+
+            if (!string.IsNullOrEmpty(cachedResult))
+            {
+                var cachedBooks = JsonConvert.DeserializeObject<IEnumerable<GetAllBooks>>(cachedResult);
+                return Ok(cachedBooks);
+            }
+
             var bookList = await _bookService.GetAllAsync();
-            return Ok(_mapper.Map<GetAllBooks>(bookList));
+            var mappedBooks = _mapper.Map<IEnumerable<GetAllBooks>>(bookList);
+
+            var cacheDurationMinutes = double.Parse(_configuration["CacheSettings:CacheDurationMinutes"]);
+            var slidingExpirationMinutes = double.Parse(_configuration["CacheSettings:SlidingExpirationMinutes"]);
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(cacheDurationMinutes),
+                SlidingExpiration = TimeSpan.FromMinutes(slidingExpirationMinutes)
+            };
+
+            await _distributedCache.SetStringAsync(cacheKey, JsonConvert.SerializeObject(mappedBooks), cacheOptions);
+
+            return Ok(mappedBooks);
         }
+
+
+        [HttpGet("GetAllBooksAvailableForBorrow")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<GetAllBooks>>> GetAllBooksAvailableForBorrowAsync()
+        {
+            var cacheKey = _configuration["CacheSettings:AllBooksAvailableForBorrowCacheKey"];
+            var cachedResult = await _distributedCache.GetStringAsync(cacheKey);
+
+            if (!string.IsNullOrEmpty(cachedResult))
+            {
+                var cachedBooks = JsonConvert.DeserializeObject<IEnumerable<GetAllBooks>>(cachedResult);
+                return Ok(cachedBooks);
+            }
+
+            var bookList = await _bookService.GetAllBooksAvailableForBorrowAsync();
+            var mappedBooks = _mapper.Map<IEnumerable<GetAllBooks>>(bookList);
+
+            var cacheDurationMinutes = double.Parse(_configuration["CacheSettings:CacheDurationMinutes"]);
+            var slidingExpirationMinutes = double.Parse(_configuration["CacheSettings:SlidingExpirationMinutes"]);
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(cacheDurationMinutes),
+                SlidingExpiration = TimeSpan.FromMinutes(slidingExpirationMinutes)
+            };
+
+            await _distributedCache.SetStringAsync(cacheKey, JsonConvert.SerializeObject(mappedBooks), cacheOptions);
+
+            return Ok(mappedBooks);
+        }
+
+
 
         [HttpGet("{id:int}",Name ="GetBook")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -70,6 +129,31 @@ namespace LibraryManagement.Controllers
             await _bookService.CreateAsync(book);
             return CreatedAtRoute("GetBook",new {id = book.Id},book);
         }
+
+
+        [HttpPut("UpdateReturnedBooks")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult> UpdateReturnedBookAvailabilityStatus(int id)
+        {
+            if (id == 0)
+            {
+                return BadRequest();
+            }
+            var book = await _bookService.GetAsync(u => u.Id == id);
+            if (book == null)
+            {
+                return NotFound();
+            }
+            await _bookService.UpdateIsAvailableStatusAsync(id);
+            await _bookService.SaveAsync();
+            return NoContent();
+        }
+
+
 
         [HttpDelete("RemoveBook")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

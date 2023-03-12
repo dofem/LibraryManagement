@@ -7,6 +7,9 @@ using LibraryManagement.Services.Implementation;
 using LibraryManagement.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using Newtonsoft.Json;
+using System.Text;
 
 namespace LibraryManagement.Controllers
 {
@@ -16,21 +19,54 @@ namespace LibraryManagement.Controllers
     {
         private IBorrowService _borrowService;
         private IMapper _mapper;
+        private IDistributedCache _distributedCache;
+        private IConfiguration _configuration;
 
-        public BorrowController(IBorrowService borrowService,IMapper mapper)
+        public BorrowController(IBorrowService borrowService,IMapper mapper,IDistributedCache distributedCache,IConfiguration configuration)
         {
             _borrowService = borrowService;
             _mapper = mapper;
+            _distributedCache = distributedCache;
+            _configuration = configuration;
         }
 
-        
-        [HttpGet("RetrieveBorrowedBooks")]
+
+        [HttpGet("RetrieveBorrowedBooks", Name = "GetBorrowedBooks")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<IEnumerable<BorrowedBookResponse>>> RetrieveBorrowedBooks()
         {
-            var books = await _borrowService.GetAllAsync();
-            return Ok(_mapper.Map<BorrowedBookResponse>(books));          
+            // Try to get the result from cache
+            var cacheKey = _configuration["CacheSettings:BorrowedBooksCacheKey"];
+            //string serializedBookList;
+            List<BorrowedBookResponse> borrowedbooks;
+            var cachedResult = await _distributedCache.GetStringAsync(cacheKey);
+            if (!string.IsNullOrEmpty(cachedResult) && cachedResult.Length > 0)
+            {
+                //serializedBookList = Encoding.UTF8.GetString(cachedResult);
+                borrowedbooks = JsonConvert.DeserializeObject<List<BorrowedBookResponse>>(cachedResult);
+                return Ok(borrowedbooks);
+            }
+
+            // If not in cache, get the result from the service
+            var borrowedbook = await _borrowService.GetAllAsync();
+            var response = _mapper.Map<List<BorrowedBookResponse>>(borrowedbook);
+
+            // Set the result in cache
+            var cacheDurationMinutes = double.Parse(_configuration["CacheSettings:CacheDurationMinutes"]);
+            var slidingExpirationMinutes = double.Parse(_configuration["CacheSettings:SlidingExpirationMinutes"]);
+            var options = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(cacheDurationMinutes),
+                SlidingExpiration = TimeSpan.FromMinutes(slidingExpirationMinutes)
+            };
+            await _distributedCache.SetStringAsync(cacheKey, JsonConvert.SerializeObject(response), options);
+
+            return Ok(response);
         }
+
+
+
+
 
         [HttpGet("{id:int}", Name = "RetrieveABorrowedBook")]
         [ProducesResponseType(StatusCodes.Status200OK)]

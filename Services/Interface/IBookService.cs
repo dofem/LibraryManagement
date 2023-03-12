@@ -12,6 +12,8 @@ namespace LibraryManagement.Services.Interface
         Task<Book> GetAsync(Expression<Func<Book,bool>> filter = null, bool tracked = true);
         Task CreateAsync(Book entity);
         Task Update(Book book);
+        Task<List<Book>> GetAllBooksAvailableForBorrowAsync();
+        Task UpdateIsAvailableStatusAsync(int bookId);
         Task RemoveAsync(Book entity);
         Task SaveAsync();
     }
