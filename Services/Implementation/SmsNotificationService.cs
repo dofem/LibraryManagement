@@ -22,22 +22,22 @@ namespace LibraryManagement.Services.Implementation
                 {
                     using (var scope = _serviceScopeFactory.CreateScope())
                     {
+                        // Perform background tasks
                         var borrowService = scope.ServiceProvider.GetRequiredService<IBorrowService>();
                         var smsNotificationService = scope.ServiceProvider.GetRequiredService<ISmsNotificationService>();
 
                         var overdueBorrowedBooks = await borrowService.GetOverdueBorrowedBooks();
                         foreach (var borrow in overdueBorrowedBooks)
                         {
+                            // Send reminder messages
                             var daysBeforeOverdue = (borrow.DueDate - DateTime.Now).Days;
                             if (daysBeforeOverdue == 2)
                             {
                                 var message = $"Reminder: The book you borrowed is overdue in 2 days time. Please return it on or before {borrow.DueDate} to avoid a fine.";
                                 smsNotificationService.SendSms(borrow.PhoneNumber, message);
                             }
-                        }
 
-                        foreach (var borrow in overdueBorrowedBooks)
-                        {
+                            // Charge late fees
                             var daysOverdue = (DateTime.Now - borrow.DueDate).Days;
                             if (daysOverdue > 0)
                             {
@@ -46,19 +46,22 @@ namespace LibraryManagement.Services.Implementation
                                 smsNotificationService.SendSms(borrow.PhoneNumber, message);
                             }
                         }
-
-                        await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
-
                     }
                 }
                 catch (Exception ex)
                 {
-
+                    // Handle exceptions
                 }
 
-
+                // Wait for the specified interval before running the loop again
+                await Task.Delay(TimeSpan.FromDays(1), stoppingToken);
             }
         }
+
+
+
     }
 }
+    
+
                 
