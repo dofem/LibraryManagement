@@ -22,28 +22,21 @@ namespace LibraryManagement.Services.Implementation
             await SaveAsync();
         }
 
-        public async Task<List<Category>> GetAllAsync(Expression<Func<Category, bool>> filter = null)
-        {
-            IQueryable<Category> query = _context.Categories;
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.ToListAsync();
+        public async Task<List<Category>> GetAllAsync()
+        {          
+            return await _context.Categories.ToListAsync();
         }
 
-        public async Task<Category> GetAsync(Expression<Func<Category, bool>> filter = null, bool tracked = true)
+        public async Task<Category> GetAsync(int id)
         {
-            IQueryable<Category> query = _context.Categories;
-            //if (!tracked)
-            //{
-            //    query = query.AsNoTracking();
-            //}
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.FirstOrDefaultAsync();
+            
+            return await _context.Categories.Where(u=>u.Id==id).FirstOrDefaultAsync();
+        }
+
+        public async Task<Category> GetByName(string name)
+        {
+            var category = await _context.Categories.Where(u=>u.Name.ToLower()==name.ToLower()).FirstOrDefaultAsync();
+            return category;
         }
 
         public async Task RemoveAsync(Category entity)

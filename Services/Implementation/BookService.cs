@@ -4,7 +4,6 @@ using LibraryManagement.Dto.Response;
 using LibraryManagement.Entities;
 using LibraryManagement.Services.Interface;
 using Microsoft.EntityFrameworkCore;
-using System.Data.Entity;
 using System.Linq.Expressions;
 
 namespace LibraryManagement.Services
@@ -26,28 +25,16 @@ namespace LibraryManagement.Services
 
         }
 
-        public async Task<Book> GetAsync(Expression<Func<Book,bool>> filter = null, bool tracked = true)
+        public async Task<Book> GetAsync(int id)
         {
-            IQueryable<Book> query = _context.Books;
-            //if(!tracked) 
-            //{
-            //    query = query.AsNoTracking();
-            //}
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.FirstOrDefaultAsync();
+            var book = await _context.Books.Where(u => u.Id == id).FirstOrDefaultAsync();
+            return book;
         }
 
-        public async Task<List<Book>> GetAllAsync(Expression<Func<Book,bool>> filter = null)
+        public async Task<List<Book>> GetAllAsync()
         {
-            IQueryable<Book> query = _context.Books;
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.ToListAsync();
+          
+            return await _context.Books.ToListAsync();
         }
 
         public async Task RemoveAsync(Book entity)
@@ -81,6 +68,10 @@ namespace LibraryManagement.Services
             await SaveAsync();
         }
 
-
+        public async Task<Book> GetByIsbn(string Isbn)
+        {
+            var book = await _context.Books.Where(u=>u.Isbn == Isbn).FirstOrDefaultAsync();
+            return book;
+        }
     }
 }

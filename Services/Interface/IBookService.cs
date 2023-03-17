@@ -8,8 +8,9 @@ namespace LibraryManagement.Services.Interface
 {
     public interface IBookService 
     {
-        Task<List<Book>> GetAllAsync(Expression<Func<Book,bool>> filter = null);
-        Task<Book> GetAsync(Expression<Func<Book,bool>> filter = null, bool tracked = true);
+        Task<List<Book>> GetAllAsync();
+        Task<Book> GetAsync(int id);
+        Task<Book> GetByIsbn(string Isbn);
         Task CreateAsync(Book entity);
         Task Update(Book book);
         Task<List<Book>> GetAllBooksAvailableForBorrowAsync();

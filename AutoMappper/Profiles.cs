@@ -14,6 +14,7 @@ namespace LibraryManagement.AutoMappper
             CreateMap<UserRegistration,User>().ReverseMap();    
             CreateMap<BorrowBook,Borrow>().ReverseMap();
             CreateMap<BorrowedBookResponse,Borrow>().ReverseMap();
+            CreateMap<GetCategories, Category>().ReverseMap();
             
         }
     }

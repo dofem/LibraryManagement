@@ -5,6 +5,7 @@ using LibraryManagement.Entities;
 using LibraryManagement.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace LibraryManagement.Controllers
 {
@@ -22,72 +23,164 @@ namespace LibraryManagement.Controllers
         }
 
         [HttpGet("RetrieveAvailableCategory")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<GetCategories>>> RetrieveAllBooks()
+        public async Task<ActionResult<ApiResponse>> RetrieveAllCategories()
         {
-            var categoryList = await _categoryService.GetAllAsync();
-            return Ok(_mapper.Map<GetCategories>(categoryList));
+            try
+            {
+                var categoryList = await _categoryService.GetAllAsync();
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccess = true,
+                    Result = _mapper.Map<IEnumerable<GetCategories>>(categoryList)
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    IsSuccess = false,
+                    ErrorMessages = new List<string> { ex.Message }
+                };
+            }
         }
 
         [HttpGet("{id:int}", Name = "GetCategory")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<GetCategories>> GetCategory(int id)
+        public async Task<ActionResult<ApiResponse>> GetCategory(int id)
         {
-            if (id == 0)
+            try
             {
-                return BadRequest();
+                if (id == 0)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Invalid ID" }
+                    };
+                }
+                var category = await _categoryService.GetAsync(id);
+                if (category == null)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.NotFound,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Category not found" }
+                    };
+                }
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccess = true,
+                    Result = _mapper.Map<GetCategories>(category)
+                };
             }
-            var category = await _categoryService.GetAsync(u => u.Id == id);
-            if (category == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    IsSuccess = false,
+                    ErrorMessages = new List<string> { ex.Message }
+                };
             }
-            return Ok(_mapper.Map<GetCategories>(category));
         }
 
         [HttpPost("AddCategory")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<GetCategories>> AddACategory([FromBody] AddNewCategory addNewCategory)
+        public async Task<ActionResult<ApiResponse>> AddACategory([FromBody] AddNewCategory addNewCategory)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                return BadRequest(ModelState);
+                if (!ModelState.IsValid)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        IsSuccess = false,
+                        ErrorMessages = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).ToList()
+                    };
+                }
+                if (await _categoryService.GetByName(addNewCategory.Name) != null)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Category already exists" }
+                    };
+                }
+                if (addNewCategory == null)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Invalid request" }
+                    };
+                }
+                Category category = _mapper.Map<Category>(addNewCategory);
+                await _categoryService.CreateAsync(category);
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.Created,
+                    IsSuccess = true,
+                    Result = _mapper.Map<GetCategories>(category)
+                };
             }
-            if (await _categoryService.GetAsync(u => u.Name.ToLower() == addNewCategory.Name.ToLower()) != null)
+            catch (Exception ex)
             {
-                ModelState.AddModelError("CustomError", "Book Category already created");
-                return BadRequest(ModelState);
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    IsSuccess = false,
+                    ErrorMessages = new List<string> { ex.Message }
+                };
             }
-            if (addNewCategory == null)
-            {
-                return BadRequest(addNewCategory);
-            }
-            Category category = _mapper.Map<Category>(addNewCategory);
-            await _categoryService.CreateAsync(category);
-            return CreatedAtRoute("GetCategory", new { id = category.Id }, category);
         }
 
         [HttpDelete("RemoveCategory")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> RemoveCategory(int id)
+        public async Task<ActionResult<ApiResponse>> RemoveCategory(int id)
         {
-            if (id == 0)
+            try
             {
-                return BadRequest();
+                if (id == 0)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Invalid ID" }
+                    };
+                }
+                var category = await _categoryService.GetAsync(id);
+                if (category == null)
+                {
+                    return new ApiResponse
+                    {
+                        StatusCode = HttpStatusCode.NotFound,
+                        IsSuccess = false,
+                        ErrorMessages = new List<string> { "Category not Found" }
+                    };
+                }
+                await _categoryService.RemoveAsync(category);
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.NoContent,
+                    IsSuccess = true,
+                    Result = "Deleted Successfully",
+                };
             }
-            var category = await _categoryService.GetAsync(u => u.Id == id);
-            if (category == null)
+            catch (Exception ex)
             {
-                return NotFound();
+                return new ApiResponse
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    IsSuccess = false,
+                    ErrorMessages = new List<string> { ex.Message }
+                };
             }
-            await _categoryService.RemoveAsync(category);
-            return NoContent();
         }
 
     }

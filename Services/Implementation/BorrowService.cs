@@ -8,7 +8,6 @@ using LibraryManagement.Services.Interface;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Configuration;
-using System.Data.Entity;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -35,7 +34,7 @@ namespace LibraryManagement.Services.Implementation
         {
            
             // check if the book is available
-            Book book =await _bookService.GetAsync(u => u.Id == entity.BookId);   
+            Book book =await _bookService.GetAsync(entity.BookId);   
             if (!book.IsAvailable)
             {
                 throw new BookAlreadyBorrowedException("The book is already borrowed");
@@ -76,28 +75,14 @@ namespace LibraryManagement.Services.Implementation
             
         }
 
-        public async Task<List<Borrow>> GetAllAsync(Expression<Func<Borrow, bool>> filter = null)
-        {
-            IQueryable<Borrow> query = _context.Borrows;
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.ToListAsync();
+        public async Task<List<Borrow>> GetAllAsync()
+        {        
+            return await _context.Borrows.ToListAsync();
         }
 
-        public async Task<Borrow> GetAsync(Expression<Func<Borrow, bool>> filter = null, bool tracked = true)
-        {
-            IQueryable<Borrow> query = _context.Borrows;
-            //if(!tracked) 
-            //{
-            //    query = query.AsNoTracking();
-            //}
-            if (filter != null)
-            {
-                query = query.Where(filter);
-            }
-            return await query.FirstOrDefaultAsync();
+        public async Task<Borrow> GetAsync(int id)
+        {           
+            return await _context.Borrows.Where(u=>u.Id==id).FirstOrDefaultAsync();
         }
 
         public async Task<List<Borrow>> GetOverdueBorrowedBooks()

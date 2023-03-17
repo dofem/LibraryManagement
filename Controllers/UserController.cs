@@ -60,8 +60,9 @@ public class AuthenticateController : ControllerBase
         return Unauthorized();
     }
 
-    [HttpPost]
-    [Route("register-User")]
+
+
+    [HttpPost("register-User")]
     public async Task<IActionResult> Register([FromBody]UserRegistration model)
     {
         var userExists = await _userManager.FindByNameAsync(model.UserName);
@@ -76,6 +77,7 @@ public class AuthenticateController : ControllerBase
             
         };
         var result = await _userManager.CreateAsync(user, model.Password);
+        Console.WriteLine(result);
         if (!result.Succeeded)
             return StatusCode(StatusCodes.Status500InternalServerError, new UserResponse { Status = "Error", Message = "User creation failed! Please check user details and try again." });
 
@@ -116,13 +118,46 @@ public class AuthenticateController : ControllerBase
         return Ok(new UserResponse { Status = "Success", Message = "User created successfully!" });
     }
 
+    //private JwtSecurityToken GetToken(List<Claim> authClaims)
+    //{
+    //    var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+
+    //    var token = new JwtSecurityToken(
+    //        issuer: _configuration["JWT:ValidIssuer"],
+    //        audience: _configuration["JWT:ValidAudience"],
+    //        expires: DateTime.Now.AddMinutes(15),
+    //        claims: authClaims,
+    //        signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+    //        );
+
+    //    return token;
+    //}
+
     private JwtSecurityToken GetToken(List<Claim> authClaims)
     {
-        var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+        var secret = _configuration["Jwt:Key"];
+        if (string.IsNullOrEmpty(secret))
+        {
+            throw new ArgumentNullException(nameof(secret), "JWT secret is not configured");
+        }
+
+        var issuer = _configuration["Jwt:Issuer"];
+        if (string.IsNullOrEmpty(issuer))
+        {
+            throw new ArgumentNullException(nameof(issuer), "JWT issuer is not configured");
+        }
+
+        var audience = _configuration["Jwt:Audience"];
+        if (string.IsNullOrEmpty(audience))
+        {
+            throw new ArgumentNullException(nameof(audience), "JWT audience is not configured");
+        }
+
+        var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
         var token = new JwtSecurityToken(
-            issuer: _configuration["JWT:ValidIssuer"],
-            audience: _configuration["JWT:ValidAudience"],
+            issuer: issuer,
+            audience: audience,
             expires: DateTime.Now.AddMinutes(15),
             claims: authClaims,
             signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
@@ -130,5 +165,6 @@ public class AuthenticateController : ControllerBase
 
         return token;
     }
- 
+
+
 }
